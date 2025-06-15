@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Ethiopia Admin Borders Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
+
+    #title {
+      position: absolute;
+      top: 50px;
+      left: 70%;
+      transform: translateX(-10%);
+      background: rgba(255, 255, 255, 0.85);
+      padding: 18px 32px;
+      border-radius: 8px;
+      font-size: 2em;
+      font-family: sans-serif;
+      color: #222;
+      opacity: 0;
+      transition: opacity 1s;
+      z-index: 10;
+      pointer-events: none;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    #title.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+  <div id="title">
+    <center>TRACKING THREATS<br /><br />OPERATIONAL SECURITY<br /> and <br />TRAVEL in ETHIOPIA</center>
+  </div>
+
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1Ijoic3R1ZGF2aWQiLCJhIjoiY2xsbnliMXgzMDNzNjNlbW41OXZ3cjg0YyJ9.g6K3xi2-K9QXWq7PxGPPsA';
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [40.4897, 9.145],
+      zoom: 5
+    });
+
+    // Store sources and layers for later use
+    const sources = {
+      regions: {
+        type: 'geojson',
+        data: 'data/adminLevels/ET_admin1_2023.geojson'
+      },
+      woredas: {
+        type: 'geojson',
+        data: 'data/adminLevels/ET_admin3_2023.geojson'
+      }
+    };
+
+    const layers = {
+      regionBorders: {
+        id: 'region-borders',
+        type: 'line',
+        source: 'regions',
+        paint: {
+          'line-color': '#0074D9',
+          'line-width': 2,
+          'line-opacity': 0
+        }
+      },
+      woredaBorders: {
+        id: 'woreda-borders',
+        type: 'line',
+        source: 'woredas',
+        paint: {
+          'line-color': '#FF4136',
+          'line-width': 0.5,
+          'line-opacity': 0
+        }
+      }
+    };
+
+    // Helper to fade in/out title
+    function fadeInTitle() {
+      document.getElementById('title').classList.add('visible');
+    }
+    function fadeOutTitle() {
+      document.getElementById('title').classList.remove('visible');
+    }
+
+    // Helper to animate layer opacity
+    function animateLayerOpacity(layerId, from, to, duration, callback) {
+      const start = performance.now();
+      function animate(now) {
+        const elapsed = now - start;
+        const t = Math.min(elapsed / duration, 1);
+        let value = from + (to - from) * t;
+        value = Math.max(0, Math.min(1, value)); // Clamp between 0 and 1
+        map.setPaintProperty(layerId, 'line-opacity', value);
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        } else if (callback) {
+          callback();
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    map.on('load', function () {
+      // Step 1: Basemap only (already loaded)
+
+      // Step 2: After 3s, fade in title
+      setTimeout(() => {
+        fadeInTitle();
+
+        // Fade out title after 5s
+        setTimeout(() => {
+          fadeOutTitle();
+        }, 5000);
+
+        // Step 3: After 3s, fade in region border
+        setTimeout(() => {
+          map.addSource('regions', sources.regions);
+          map.addLayer(layers.regionBorders);
+
+          // Fade in region border over 2s
+          animateLayerOpacity('region-borders', 0, 1, 2000, () => {
+            // Fade out region border over 2s after it's fully visible
+            setTimeout(() => {
+              animateLayerOpacity('region-borders', 1, 0, 2000, () => {
+                // Step 4: After fade out, remove region border and fade in woredas
+                map.removeLayer('region-borders');
+                map.removeSource('regions');
+                map.addSource('woredas', sources.woredas);
+                map.addLayer(layers.woredaBorders);
+
+                // Fade in woreda borders over 2s
+                <!-- ...existing code... -->
+                // Fade in woreda borders over 2s
+                animateLayerOpacity('woreda-borders', 0, 1, 2000, () => {
+                  // Step 5: After fade in, highlight Tikur Enchini woreda (id: 223249) with red fill at 50% opacity,
+                  // and woredas 223397 and 223395 with yellow fill at 50% opacity, then zoom
+                  fetch(sources.woredas.data)
+                    .then(resp => resp.json())
+                    .then(geojson => {
+                      // Add a fill layer for Tikur Enchini woreda (red)
+                      // Add yellow fill layers first
+                      map.addLayer({
+                        id: 'yellow-woredas-fill-id',
+                        type: 'fill',
+                        source: 'woredas',
+                        paint: {
+                          'fill-color': '#FFFF00',
+                          'fill-opacity': 0.5
+                        },
+                        filter: [
+                          'in',
+                          'id',
+                          223397, 223395
+                        ]
+                      });
+                      map.addLayer({
+                        id: 'yellow-woredas-fill-ID',
+                        type: 'fill',
+                        source: 'woredas',
+                        paint: {
+                          'fill-color': '#FFFF00',
+                          'fill-opacity': 0.5
+                        },
+                        filter: [
+                          'in',
+                          'ID',
+                          223397, 223395
+                        ]
+                      });
+
+                      // Add the red fill layer last so it appears on top
+                      map.addLayer({
+                        id: 'tikur-enchini-fill-id',
+                        type: 'fill',
+                        source: 'woredas',
+                        paint: {
+                          'fill-color': '#FF0000',
+                          'fill-opacity': 0.5
+                        },
+                        filter: [
+                          '==',
+                          'id',
+                          223249
+                        ]
+                      });
+                      map.addLayer({
+                        id: 'tikur-enchini-fill-ID',
+                        type: 'fill',
+                        source: 'woredas',
+                        paint: {
+                          'fill-color': '#FF0000',
+                          'fill-opacity': 0.5
+                        },
+                        filter: [
+                          '==',
+                          'ID',
+                          223249
+                        ]
+                      });
+                      // Proceed with zoom after a short delay
+                      setTimeout(() => {
+                        const feature = geojson.features.find(f =>
+                          f.properties && (f.properties.id == 223249 || f.properties.ID == 223249)
+                        );
+                        if (feature) {
+                          const bbox = turf.bbox(feature);
+                          map.fitBounds(bbox, {
+                            padding: 300,
+                            duration: 2000
+                          });
+                        } else {
+                          alert('Tikur Enchini woreda not found!');
+                        }
+                      }, 500);
+                    });
+                });
+              }, 2000);
+            });
+          }, 3000);
+        }, 3000);
+      });
+      // Load Turf.js for bbox calculation
+      const turfScript = document.createElement('script');
+      turfScript.src = 'https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js';
+      document.head.appendChild(turfScript);
+    });
+  </script>
+</body>
+
+</html>
