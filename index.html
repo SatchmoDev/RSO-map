@@ -43,6 +43,38 @@
     #title.visible {
       opacity: 1;
     }
+
+    #start-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      font-family: sans-serif;
+    }
+
+    #start-overlay-box {
+      background: #fff;
+      padding: 32px 48px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+      font-size: 2em;
+      color: #222;
+      text-align: center;
+      border: 2px solid #0074D9;
+    }
+
+    @media (max-width: 600px) {
+      #start-overlay-box {
+        font-size: 1.2em;
+        padding: 18px 12px;
+      }
+    }
   </style>
 </head>
 
@@ -51,8 +83,14 @@
   <div id="title">
     <center>TRACKING THREATS<br /><br />OPERATIONAL SECURITY<br /> and <br />TRAVEL in ETHIOPIA</center>
   </div>
+  <audio id="narration-audio" src="data/media/ElevenLabs_2025-06-20T02_45_48_Brian_pre_sp100_s50_sb75_v3.mp3"></audio>
+  <div id="start-overlay">
+    <div id="start-overlay-box">
+      Click anywhere on this page to start
+    </div>
+  </div>
 
-  <script>
+  <script type="module">
     mapboxgl.accessToken = 'pk.eyJ1Ijoic3R1ZGF2aWQiLCJhIjoiY2xsbnliMXgzMDNzNjNlbW41OXZ3cjg0YyJ9.g6K3xi2-K9QXWq7PxGPPsA';
 
     const map = new mapboxgl.Map({
@@ -97,7 +135,6 @@
       }
     };
 
-    // Helper to fade in/out title
     function fadeInTitle() {
       document.getElementById('title').classList.add('visible');
     }
@@ -105,14 +142,13 @@
       document.getElementById('title').classList.remove('visible');
     }
 
-    // Helper to animate layer opacity
     function animateLayerOpacity(layerId, from, to, duration, callback) {
       const start = performance.now();
       function animate(now) {
         const elapsed = now - start;
         const t = Math.min(elapsed / duration, 1);
         let value = from + (to - from) * t;
-        value = Math.max(0, Math.min(1, value)); // Clamp between 0 and 1
+        value = Math.max(0, Math.min(1, value));
         map.setPaintProperty(layerId, 'line-opacity', value);
         if (t < 1) {
           requestAnimationFrame(animate);
@@ -123,125 +159,145 @@
       requestAnimationFrame(animate);
     }
 
-    map.on('load', function () {
-      // Step 1: Basemap only (already loaded)
+    function playNarrationAudio() {
+      const audio = document.getElementById('narration-audio');
+      audio.play().catch(() => {
+        // If autoplay fails, wait for user interaction
+        document.body.addEventListener('click', () => {
+          audio.play();
+        }, { once: true });
+      });
+    }
 
-      // Step 2: After 3s, fade in title
+    function startAnimationSequence() {
+      fadeInTitle();
+      playNarrationAudio();
+
+      // Fade out title after 5s
       setTimeout(() => {
-        fadeInTitle();
+        fadeOutTitle();
+      }, 5000);
 
-        // Fade out title after 5s
-        setTimeout(() => {
-          fadeOutTitle();
-        }, 5000);
+      // Step 3: After 3s, fade in region border
+      setTimeout(() => {
+        map.addSource('regions', sources.regions);
+        map.addLayer(layers.regionBorders);
 
-        // Step 3: After 3s, fade in region border
-        setTimeout(() => {
-          map.addSource('regions', sources.regions);
-          map.addLayer(layers.regionBorders);
+        // Fade in region border over 2s
+        animateLayerOpacity('region-borders', 0, 1, 2000, () => {
+          // Fade out region border over 2s after it's fully visible
+          setTimeout(() => {
+            animateLayerOpacity('region-borders', 1, 0, 2000, () => {
+              // Step 4: After fade out, remove region border and fade in woredas
+              map.removeLayer('region-borders');
+              map.removeSource('regions');
+              map.addSource('woredas', sources.woredas);
+              map.addLayer(layers.woredaBorders);
 
-          // Fade in region border over 2s
-          animateLayerOpacity('region-borders', 0, 1, 2000, () => {
-            // Fade out region border over 2s after it's fully visible
-            setTimeout(() => {
-              animateLayerOpacity('region-borders', 1, 0, 2000, () => {
-                // Step 4: After fade out, remove region border and fade in woredas
-                map.removeLayer('region-borders');
-                map.removeSource('regions');
-                map.addSource('woredas', sources.woredas);
-                map.addLayer(layers.woredaBorders);
+              // Fade in woreda borders over 2s
+              animateLayerOpacity('woreda-borders', 0, 1, 2000, () => {
+                // Step 5: After fade in, highlight Tikur Enchini woreda (id: 223249) with red fill at 50% opacity,
+                // and woredas 223397 and 223395 with yellow fill at 50% opacity, then zoom
+                fetch(sources.woredas.data)
+                  .then(resp => resp.json())
+                  .then(geojson => {
+                    // Add a fill layer for Tikur Enchini woreda (red)
+                    // Add yellow fill layers first
+                    map.addLayer({
+                      id: 'yellow-woredas-fill-id',
+                      type: 'fill',
+                      source: 'woredas',
+                      paint: {
+                        'fill-color': '#FFFF00',
+                        'fill-opacity': 0.5
+                      },
+                      filter: [
+                        'in',
+                        'id',
+                        223397, 223395
+                      ]
+                    });
+                    map.addLayer({
+                      id: 'yellow-woredas-fill-ID',
+                      type: 'fill',
+                      source: 'woredas',
+                      paint: {
+                        'fill-color': '#FFFF00',
+                        'fill-opacity': 0.5
+                      },
+                      filter: [
+                        'in',
+                        'ID',
+                        223397, 223395
+                      ]
+                    });
 
-                // Fade in woreda borders over 2s
-                <!-- ...existing code... -->
-                // Fade in woreda borders over 2s
-                animateLayerOpacity('woreda-borders', 0, 1, 2000, () => {
-                  // Step 5: After fade in, highlight Tikur Enchini woreda (id: 223249) with red fill at 50% opacity,
-                  // and woredas 223397 and 223395 with yellow fill at 50% opacity, then zoom
-                  fetch(sources.woredas.data)
-                    .then(resp => resp.json())
-                    .then(geojson => {
-                      // Add a fill layer for Tikur Enchini woreda (red)
-                      // Add yellow fill layers first
-                      map.addLayer({
-                        id: 'yellow-woredas-fill-id',
-                        type: 'fill',
-                        source: 'woredas',
-                        paint: {
-                          'fill-color': '#FFFF00',
-                          'fill-opacity': 0.5
-                        },
-                        filter: [
-                          'in',
-                          'id',
-                          223397, 223395
-                        ]
-                      });
-                      map.addLayer({
-                        id: 'yellow-woredas-fill-ID',
-                        type: 'fill',
-                        source: 'woredas',
-                        paint: {
-                          'fill-color': '#FFFF00',
-                          'fill-opacity': 0.5
-                        },
-                        filter: [
-                          'in',
-                          'ID',
-                          223397, 223395
-                        ]
-                      });
-
-                      // Add the red fill layer last so it appears on top
-                      map.addLayer({
-                        id: 'tikur-enchini-fill-id',
-                        type: 'fill',
-                        source: 'woredas',
-                        paint: {
-                          'fill-color': '#FF0000',
-                          'fill-opacity': 0.5
-                        },
-                        filter: [
-                          '==',
-                          'id',
-                          223249
-                        ]
-                      });
-                      map.addLayer({
-                        id: 'tikur-enchini-fill-ID',
-                        type: 'fill',
-                        source: 'woredas',
-                        paint: {
-                          'fill-color': '#FF0000',
-                          'fill-opacity': 0.5
-                        },
-                        filter: [
-                          '==',
-                          'ID',
-                          223249
-                        ]
-                      });
-                      // Proceed with zoom after a short delay
-                      setTimeout(() => {
-                        const feature = geojson.features.find(f =>
-                          f.properties && (f.properties.id == 223249 || f.properties.ID == 223249)
-                        );
-                        if (feature) {
-                          const bbox = turf.bbox(feature);
+                    // Add the red fill layer last so it appears on top
+                    map.addLayer({
+                      id: 'tikur-enchini-fill-id',
+                      type: 'fill',
+                      source: 'woredas',
+                      paint: {
+                        'fill-color': '#FF0000',
+                        'fill-opacity': 0.5
+                      },
+                      filter: [
+                        '==',
+                        'id',
+                        223249
+                      ]
+                    });
+                    map.addLayer({
+                      id: 'tikur-enchini-fill-ID',
+                      type: 'fill',
+                      source: 'woredas',
+                      paint: {
+                        'fill-color': '#FF0000',
+                        'fill-opacity': 0.5
+                      },
+                      filter: [
+                        '==',
+                        'ID',
+                        223249
+                      ]
+                    });
+                    // Proceed with zoom after a 5 second delay
+                    setTimeout(() => {
+                      const feature = geojson.features.find(f =>
+                        f.properties && (f.properties.id == 223249 || f.properties.ID == 223249)
+                      );
+                      if (feature && feature.geometry) {
+                        const bbox = turf.bbox(feature);
+                        if (bbox.every(coord => typeof coord === 'number' && !isNaN(coord))) {
                           map.fitBounds(bbox, {
                             padding: 300,
                             duration: 2000
                           });
                         } else {
-                          alert('Tikur Enchini woreda not found!');
+                          alert('Bounding box is invalid for Tikur Enchini woreda!');
                         }
-                      }, 500);
-                    });
-                });
-              }, 2000);
-            });
-          }, 3000);
+                      } else {
+                        alert('Tikur Enchini woreda not found!');
+                      }
+                    }, 5000); // <-- 5 second delay before zoom
+                  });
+              });
+            }, 2000);
+          });
         }, 3000);
-      });
+      }, 3000);
+    }
+
+    map.on('load', function () {
+      // Wait for user interaction to start everything
+      const overlay = document.getElementById('start-overlay');
+      const startHandler = () => {
+        overlay.style.display = 'none';
+        // Wait 3 seconds, then start animation and audio
+        setTimeout(startAnimationSequence, 3000);
+        document.body.removeEventListener('click', startHandler);
+      };
+      document.body.addEventListener('click', startHandler);
       // Load Turf.js for bbox calculation
       const turfScript = document.createElement('script');
       turfScript.src = 'https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js';
