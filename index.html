@@ -97,7 +97,7 @@
       container: 'map',
       style: 'mapbox://styles/mapbox/light-v11',
       center: [40.4897, 9.145],
-      zoom: 5
+      zoom: 6
     });
 
     // Store sources and layers for later use
@@ -128,7 +128,7 @@
         type: 'line',
         source: 'woredas',
         paint: {
-          'line-color': '#FF4136',
+          'line-color': '#0074D9',
           'line-width': 0.5,
           'line-opacity': 0
         }
@@ -194,8 +194,8 @@
               map.addSource('woredas', sources.woredas);
               map.addLayer(layers.woredaBorders);
 
-              // Fade in woreda borders over 2s
-              animateLayerOpacity('woreda-borders', 0, 1, 2000, () => {
+              // Fade in woreda borders over 3s
+              animateLayerOpacity('woreda-borders', 0, 1, 3000, () => {
                 // Step 5: After fade in, highlight Tikur Enchini woreda (id: 223249) with red fill at 50% opacity,
                 // and woredas 223397 and 223395 with yellow fill at 50% opacity, then zoom
                 fetch(sources.woredas.data)
@@ -271,7 +271,7 @@
                         if (bbox.every(coord => typeof coord === 'number' && !isNaN(coord))) {
                           map.fitBounds(bbox, {
                             padding: 300,
-                            duration: 2000
+                            duration: 5000
                           });
                         } else {
                           alert('Bounding box is invalid for Tikur Enchini woreda!');
@@ -285,7 +285,7 @@
             }, 2000);
           });
         }, 3000);
-      }, 3000);
+      }, 4000);
     }
 
     map.on('load', function () {
