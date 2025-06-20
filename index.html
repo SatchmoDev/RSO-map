@@ -27,7 +27,7 @@
       top: 50px;
       left: 70%;
       transform: translateX(-10%);
-      background: rgba(255, 255, 255, 0.85);
+      background: rgb(223, 133, 72);
       padding: 18px 32px;
       border-radius: 8px;
       font-size: 2em;
@@ -173,10 +173,10 @@
       fadeInTitle();
       playNarrationAudio();
 
-      // Fade out title after 5s
+      
       setTimeout(() => {
         fadeOutTitle();
-      }, 3000);
+      }, 4000);
 
       // Step 3: After 3s, fade in region border
       setTimeout(() => {
@@ -209,7 +209,7 @@
                       source: 'woredas',
                       paint: {
                         'fill-color': '#FFFF00',
-                        'fill-opacity': 0.5
+                        'fill-opacity': 0.25
                       },
                       filter: [
                         'in',
@@ -225,7 +225,7 @@
                       source: 'woredas',
                       paint: {
                         'fill-color': '#FFFF00',
-                        'fill-opacity': 0.5
+                        'fill-opacity': 0.25
                       },
                       filter: [
                         'in',
@@ -243,7 +243,7 @@
                       source: 'woredas',
                       paint: {
                         'fill-color': '#FF0000',
-                        'fill-opacity': 0.5
+                        'fill-opacity': 0.25
                       },
                       filter: ['in', 'id', 223249, 22325, 223250, 223251, 223252, 223259, 223260, 223261, 223262, 223263, 223265, 223266, 223267, 223268, 223269, 223270, 223271]
                     });
@@ -253,7 +253,7 @@
                       source: 'woredas',
                       paint: {
                         'fill-color': '#FF0000',
-                        'fill-opacity': 0.5
+                        'fill-opacity': 0.25
                       },
                       filter: ['in', 'id', 223249, 22325, 223250, 223251, 223252, 223259, 223260, 223261, 223262, 223263, 223265, 223266, 223267, 223268, 223269, 223270, 223271]
                     });
@@ -267,7 +267,7 @@
                         if (bbox.every(coord => typeof coord === 'number' && !isNaN(coord))) {
                           map.fitBounds(bbox, {
                             padding: 300,
-                            duration: 5000
+                            duration: 6000,
                           });
                         } else {
                           alert('Bounding box is invalid for Tikur Enchini woreda!');
@@ -275,7 +275,40 @@
                       } else {
                         alert('Tikur Enchini woreda not found!');
                       }
-                    }, 5000); // <-- 5 second delay before zoom
+
+                      // After zoom, show 3 titles: "Identity", "Volume", "Time"
+                      setTimeout(() => {
+                        // Create and style the title elements
+                        const titles = [
+                          { text: "Incident Type", top: "20%", left: "20%" },
+                          { text: "Incident Quantity", top: "35%", left: "20%" },
+                          { text: "Time Validity", top: "50%", left: "20%" }
+                        ];
+                        titles.forEach((t, i) => {
+                          const div = document.createElement('div');
+                          div.textContent = t.text;
+                          div.style.position = 'absolute';
+                          div.style.top = t.top;
+                          div.style.left = t.left;
+                          div.style.transform = 'translate(-50%, -50%)';
+                          div.style.background = 'rgba(255,255,255,0.2)';
+                          div.style.padding = '18px 32px';
+                          div.style.borderRadius = '8px';
+                          div.style.fontSize = '2.5em';
+                          div.style.fontFamily = 'sans-serif';
+                          div.style.color = '#222';
+                          div.style.opacity = '0';
+                          div.style.transition = 'opacity 1s';
+                          div.style.zIndex = 10001 + i;
+                          div.className = 'popup-title';
+                          document.body.appendChild(div);
+                          // Fade in with staggered delay
+                          setTimeout(() => {
+                            div.style.opacity = '1';
+                          }, 2000 * i);
+                        });
+                      }, 8000); // Show titles 5s after zoom starts
+                    }, 4000); // <-- 5 second delay before zoom
                   });
               });
             }, 2000);
@@ -289,7 +322,7 @@
       const overlay = document.getElementById('start-overlay');
       const startHandler = () => {
         overlay.style.display = 'none';
-        // Wait 3 seconds, then start animation and audio
+        // Wait 2 seconds, then start animation and audio
         setTimeout(startAnimationSequence, 2000);
         document.body.removeEventListener('click', startHandler);
       };
@@ -301,5 +334,4 @@
     });
   </script>
 </body>
-
 </html>
